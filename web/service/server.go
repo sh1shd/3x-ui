@@ -433,7 +433,7 @@ func (s *ServerService) AppendCpuSample(t time.Time, v float64) {
 }
 
 func (s *ServerService) sampleCPUUtilization() (float64, error) {
-	// Try native platform-specific CPU implementation first (Windows, Linux, macOS)
+	// Try native platform-specific CPU implementation first
 	if pct, err := sys.CPUPercentRaw(); err == nil {
 		s.mu.Lock()
 		// First call to native method returns 0 (initializes baseline)
@@ -596,13 +596,6 @@ func (s *ServerService) downloadXRay(version string) (string, error) {
 	osName := runtime.GOOS
 	arch := runtime.GOARCH
 
-	switch osName {
-	case "darwin":
-		osName = "macos"
-	case "windows":
-		osName = "windows"
-	}
-
 	switch arch {
 	case "amd64":
 		arch = "64"
@@ -690,12 +683,7 @@ func (s *ServerService) UpdateXray(version string) error {
 	}
 
 	// 4. Extract correct binary
-	if runtime.GOOS == "windows" {
-		targetBinary := filepath.Join("bin", "xray-windows-amd64.exe")
-		err = copyZipFile("xray.exe", targetBinary)
-	} else {
-		err = copyZipFile("xray", xray.GetBinaryPath())
-	}
+	err = copyZipFile("xray", xray.GetBinaryPath())
 	if err != nil {
 		return err
 	}
@@ -714,11 +702,6 @@ func (s *ServerService) GetLogs(count string, level string, syslog string) []str
 	var lines []string
 
 	if syslog == "true" {
-		// Check if running on Windows - journalctl is not available
-		if runtime.GOOS == "windows" {
-			return []string{"Syslog is not supported on Windows. Please use application logs instead by unchecking the 'Syslog' option."}
-		}
-
 		// Validate and sanitize count parameter
 		countInt, err := strconv.Atoi(count)
 		if err != nil || countInt < 1 || countInt > 10000 {
